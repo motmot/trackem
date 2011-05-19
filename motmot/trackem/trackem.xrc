@@ -1,0 +1,112 @@
+<?xml version="1.0" ?>
+<resource>
+  <object class="wxFrame" name="TRACKEM_FRAME">
+    <title>trackem</title>
+    <object class="wxBoxSizer">
+      <orient>wxVERTICAL</orient>
+      <object class="sizeritem">
+        <object class="wxCheckBox" name="ENABLED">
+          <label>enable point extraction</label>
+          <checked>0</checked>
+          <tooltip>Check this to enable processing</tooltip>
+        </object>
+      </object>
+      <object class="sizeritem">
+        <object class="wxStaticBoxSizer">
+          <label>2D image parameters</label>
+          <orient>wxVERTICAL</orient>
+          <object class="sizeritem">
+            <object class="wxCheckBox" name="LIGHT_ON_DARK">
+              <label>Find brightest points</label>
+              <checked>1</checked>
+              <tooltip>If checked, search for brightest points. If unchecked, search for darkest points.</tooltip>
+            </object>
+            <flag>wxALIGN_CENTRE</flag>
+          </object>
+          <object class="sizeritem">
+            <object class="wxCheckBox" name="CALCULATE_CENTROID">
+              <label>Calculate centroid</label>
+              <checked>0</checked>
+              <enabled>0</enabled>
+              <tooltip>If enabled, find centroid of point</tooltip>
+            </object>
+            <flag>wxALIGN_CENTRE</flag>
+          </object>
+          <object class="sizeritem">
+            <object class="wxFlexGridSizer">
+              <cols>2</cols>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>Max number points tracked:</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxTextCtrl" name="NUM_POINTS">
+                  <tooltip>Enter the number of points to extract</tooltip>
+                </object>
+              </object>
+              <object class="sizeritem">
+                <object class="wxStaticText" name="">
+                  <label>Minimum point distance:</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxTextCtrl" name="ANALYSIS_RADIUS">
+                  <tooltip>Enter the radius of the cleared zone around each found point.</tooltip>
+                </object>
+              </object>
+              <growablecols>1</growablecols>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>Luminance threshold:</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxTextCtrl" name="LUMINANCE_THRESHOLD"/>
+              </object>
+            </object>
+            <flag>wxEXPAND|wxALIGN_CENTRE</flag>
+          </object>
+        </object>
+        <option>1</option>
+        <flag>wxALL|wxEXPAND</flag>
+        <border>5</border>
+      </object>
+      <object class="sizeritem">
+        <object class="wxBoxSizer">
+          <orient>wxHORIZONTAL</orient>
+          <object class="sizeritem">
+            <object class="wxButton" name="EDIT_UDP_RECEIVERS">
+              <label>Edit UDP receivers...</label>
+            </object>
+            <option>1</option>
+            <flag>wxALIGN_CENTRE</flag>
+          </object>
+        </object>
+        <flag>wxALL|wxEXPAND</flag>
+        <border>5</border>
+      </object>
+      <object class="sizeritem">
+        <object class="wxPanel" name="STATUS_BAR">
+          <style>wxSUNKEN_BORDER</style>
+          <object class="wxBoxSizer">
+            <orient>wxHORIZONTAL</orient>
+            <object class="sizeritem">
+              <object class="wxStaticText" name="STATUS">
+                <label></label>
+              </object>
+              <option>1</option>
+            </object>
+          </object>
+        </object>
+        <flag>wxEXPAND</flag>
+      </object>
+    </object>
+  </object>
+</resource>
