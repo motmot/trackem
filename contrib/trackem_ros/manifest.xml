@@ -1,0 +1,17 @@
+<package>
+  <description brief="trackem_ros">
+
+    Forward one or more (up to a large number) of tracked points from
+    trackem FView (Motmot) plugin to a ROS topic.  ROS nodes should be
+    run on the computer that is receiving points from trackem.
+    Coordinates are in pixels of the camera image.
+
+  </description>
+  <author>Scott C. Livingston</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <!--<url>http://ros.org/wiki/trackem_ros</url>-->
+
+  <depend package="rospy"/>
+
+</package>
