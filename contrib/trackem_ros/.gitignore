@@ -1,3 +1,5 @@
 /msg_gen/
 /src/
 /build/
+*~
+/calibrations/
