@@ -67,7 +67,7 @@ def pixel2m(x_p, f, pp, kc, H):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print "Usage: forwardcal.py FILE"
         exit(1)
 
