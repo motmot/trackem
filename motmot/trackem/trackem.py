@@ -169,7 +169,8 @@ class TrackemClass(object):
         """
         if self.pixel_format=='YUV422':
             buf = imops.yuv422_to_mono8( numpy.asarray(buf) ) # convert
-            buf = FastImage.asfastimage(buf)
+        
+        buf = FastImage.asfastimage(buf)
 
         point_list = []
         draw_linesegs = [] # [ (x0,y0,x1,y1) ]
