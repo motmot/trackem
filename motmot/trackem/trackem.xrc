@@ -78,20 +78,7 @@
         <flag>wxALL|wxEXPAND</flag>
         <border>5</border>
       </object>
-      <object class="sizeritem">
-        <object class="wxBoxSizer">
-          <orient>wxHORIZONTAL</orient>
-          <object class="sizeritem">
-            <object class="wxButton" name="EDIT_UDP_RECEIVERS">
-              <label>Edit UDP receivers...</label>
-            </object>
-            <option>1</option>
-            <flag>wxALIGN_CENTRE</flag>
-          </object>
-        </object>
-        <flag>wxALL|wxEXPAND</flag>
-        <border>5</border>
-      </object>
+      
       <object class="sizeritem">
         <object class="wxPanel" name="STATUS_BAR">
           <style>wxSUNKEN_BORDER</style>
@@ -99,7 +86,7 @@
             <orient>wxHORIZONTAL</orient>
             <object class="sizeritem">
               <object class="wxStaticText" name="STATUS">
-                <label></label>
+                <label/>
               </object>
               <option>1</option>
             </object>

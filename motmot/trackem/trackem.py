@@ -10,10 +10,18 @@ import motmot.wxvalidatedtext.wxvalidatedtext as wxvt
 import os, sys, socket, signal, time, math, threading, Queue
 import motmot.flytrax.flytrax as flytrax
 import motmot.imops.imops as imops
+import numpy as np
 
-import motmot.flytrax.trax_udp_sender as trax_udp_sender
+# ROS stuff ------------------------------
+import roslib
+have_ROS = True
+roslib.load_manifest('flymad')
 
-import struct
+from flymad.msg import Raw2dPositions
+from geometry_msgs.msg import Pose2D
+import rospy
+import rospy.core
+# -----------------------------------------
 
 RESFILE = pkg_resources.resource_filename(__name__,"trackem.xrc") # trigger extraction
 RES = xrc.EmptyXmlResource()
@@ -99,14 +107,11 @@ class BufferAllocator(object):
     def __call__(self, w, h):
         return FastImage.FastImage8u(FastImage.Size(w,h))
 
-class TrackemClass(trax_udp_sender.UDPSender):
+
+class TrackemClass(object):
     def __init__(self,wx_parent):
         self.wx_parent = wx_parent
         self.frame = RES.LoadFrame(self.wx_parent,"TRACKEM_FRAME") # make frame main panel
-
-        trax_udp_sender.UDPSender.__init__(self,self.frame)
-        ctrl = xrc.XRCCTRL(self.frame,"EDIT_UDP_RECEIVERS")
-        ctrl.Bind( wx.EVT_BUTTON, self.OnEditUDPReceivers)
 
         self.num_points = SharedValue1(7)
         self.analysis_radius = SharedValue1(25)
@@ -121,7 +126,15 @@ class TrackemClass(trax_udp_sender.UDPSender):
 
         self._setupGUI()
 
-        self.sockobj = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #####
+        if have_ROS:
+            rospy.init_node('fview', # common name across all plugins so multiple calls to init_node() don't fail
+                            anonymous=True, # allow multiple instances to run
+                            disable_signals=True, # let WX intercept them
+                            )
+            self.pub = rospy.Publisher( '/flymad/raw_2d_positions',
+                                        Raw2dPositions,
+                                        tcp_nodelay=True )
 
     def _setupGUI(self):
 
@@ -201,15 +214,23 @@ class TrackemClass(trax_udp_sender.UDPSender):
                 # save values
                 point_list.append( (offset_x+x,offset_y+y) )
 
-            # send data over UDP
-            hosts = self.get_downstream_hosts()
-            if self.num_points.get() and hosts is not None:
-                data = struct.pack('<sLd',cam_id,framenumber,timestamp)
-                for point_tuple in point_list:
-                    data = data + struct.pack('<II',*point_tuple)
-                for host in hosts:
-                    self.sockobj.sendto(data,host)
+            # send data over ROS
+            if self.num_points.get():
+                msg = Raw2dPositions()
 
+                msg.header.stamp.secs = int(np.floor(timestamp))
+                msg.header.stamp.nsecs = int((timestamp%1.0)*1e9)
+                msg.header.frame_id = "pixels"
+
+                msg.framenumber = framenumber
+
+                for point_tuple in point_list:
+                    pose = Pose2D()
+                    pose.x, pose.y = point_tuple[:2]
+                    pose.theta = np.nan
+                    msg.points.append( pose )
+                self.pub.publish(msg)
+                    
         return point_list, draw_linesegs
 
     def set_view_flip_LR( self, val ):
