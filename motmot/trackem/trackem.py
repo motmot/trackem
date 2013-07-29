@@ -5,6 +5,7 @@ import pkg_resources
 import wx
 from wx import xrc
 import motmot.FastImage.FastImage as FastImage
+import motmot.realtime_image_analysis.realtime_image_analysis as realtime_image_analysis
 import numpy
 import motmot.wxvalidatedtext.wxvalidatedtext as wxvt
 import os, sys, socket, signal, time, math, threading, Queue
@@ -114,7 +115,7 @@ class TrackemClass(object):
         self.frame = RES.LoadFrame(self.wx_parent,"TRACKEM_FRAME") # make frame main panel
 
         self.num_points = SharedValue1(10)
-        self.analysis_radius = SharedValue1(25)
+        self.analysis_radius = SharedValue1(10)
         self.luminance_threshold = SharedValue1(45)
         self.max_area = SharedValue1(100)
 
@@ -227,6 +228,7 @@ class TrackemClass(object):
         
         buf = FastImage.asfastimage(buf)
 
+        ros_list = []
         point_list = []
         draw_linesegs = [] # [ (x0,y0,x1,y1) ]
         if self.enabled.isSet():
@@ -280,15 +282,34 @@ class TrackemClass(object):
                 num_pixels_classified = np.sum(binary_region.ravel())
                 #print '%d, (%d, %d)'%(num_pixels_classified,x,y)
 
-                # clear that region
-                buf_view[clearymin:clearymax,clearxmin:clearxmax]=clearval
-
                 if num_pixels_classified > self.max_area.get():
                     # we don't want this point
                     pass
                 else:
-                    # save values
-                    point_list.append( (offset_x+x,offset_y+y) )
+                    # compute luminance center of mass
+                    if not light_on_dark:
+                        # make a light-on-dark image
+                        this_region2 = 255-this_region
+                    else:
+                        this_region2 = this_region
+                    fibuf = FastImage.asfastimage(this_region2)
+                    try:
+                        results = realtime_image_analysis.py_fit_params(fibuf)
+                    except Exception as err:
+                        print '%s: error extracting image data. ignoring.'%(err,)
+                    else:
+                        (x0, y0, area, slope, eccentricity) = results
+                        theta = np.arctan( slope )
+
+                        x1 = x0 + clearxmin
+                        y1 = y0 + clearymin
+
+                        # save values
+                        ros_list.append( (offset_x+x1,offset_y+y1,theta) )
+                        point_list.append( (offset_x+x1,offset_y+y1) )
+
+                # clear the region near the detected point
+                buf_view[clearymin:clearymax,clearxmin:clearxmax]=clearval
 
             # send data over ROS
             if self.num_points.get():
@@ -300,10 +321,11 @@ class TrackemClass(object):
 
                 msg.framenumber = framenumber
 
-                for point_tuple in point_list:
+                for (x,y,theta) in ros_list:
                     pose = Pose2D()
-                    pose.x, pose.y = point_tuple[:2]
-                    pose.theta = np.nan
+                    pose.x = x
+                    pose.y = y
+                    pose.theta = theta
                     msg.points.append( pose )
                 self.pub.publish(msg)
 
