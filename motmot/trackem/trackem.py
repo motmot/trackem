@@ -102,7 +102,7 @@ def bind_textbox_to_sharedvalue( ctrl, shared_value, validator_func=None, conver
         raise NotImplementedError('not implemented')
         # XXX this codepath hasn't been tested
         #ctrl.Bind( wx.EVT_TEXTBOX, handler.OnSet )
-
+                              
 class BufferAllocator(object):
     def __call__(self, w, h):
         return FastImage.FastImage8u(FastImage.Size(w,h))
@@ -113,9 +113,15 @@ class TrackemClass(object):
         self.wx_parent = wx_parent
         self.frame = RES.LoadFrame(self.wx_parent,"TRACKEM_FRAME") # make frame main panel
 
-        self.num_points = SharedValue1(7)
+        self.num_points = SharedValue1(10)
         self.analysis_radius = SharedValue1(25)
         self.luminance_threshold = SharedValue1(45)
+        self.max_area = SharedValue1(100)
+
+        self.mask_center_x = SharedValue1(257)
+        self.mask_center_y = SharedValue1(245)
+        self.mask_radius = SharedValue1(221)
+
         self.cur_imagePts = SharedValue1(None)
         self.enabled = threading.Event()
         self.light_on_dark = threading.Event()
@@ -123,6 +129,8 @@ class TrackemClass(object):
         self.status_label = xrc.XRCCTRL(self.frame,"STATUS")
         self.msg = None
         self.cam_id = None
+
+        self.view_mask_mode = threading.Event()
 
         self._setupGUI()
 
@@ -146,6 +154,24 @@ class TrackemClass(object):
                                      conversion_func=int )
         bind_textbox_to_sharedvalue( xrc.XRCCTRL(self.frame,"LUMINANCE_THRESHOLD"), self.luminance_threshold,
                                      conversion_func=int )
+        bind_textbox_to_sharedvalue( xrc.XRCCTRL(self.frame,"MAX_AREA"), self.max_area,
+                                     conversion_func=int )
+        view_mask_mode_widget = xrc.XRCCTRL(self.frame,"VIEW_MASK_CHECKBOX")
+        wx.EVT_CHECKBOX(view_mask_mode_widget,
+                        view_mask_mode_widget.GetId(),
+                        self.OnViewMaskMode)
+
+        for name in ["MASK_X_CENTER","MASK_Y_CENTER","MASK_RADIUS"]:
+            ctrl = xrc.XRCCTRL(self.frame,name)
+            wx.EVT_COMMAND_SCROLL(ctrl, ctrl.GetId(), self.update_mask )
+
+
+    def OnViewMaskMode(self,event):
+        widget = event.GetEventObject()
+        if widget.IsChecked():
+            self.view_mask_mode.set()
+        else:
+            self.view_mask_mode.clear()
 
     def get_frame(self):
         """return wxPython frame widget"""
@@ -157,6 +183,35 @@ class TrackemClass(object):
     def get_plugin_name(self):
         return 'trackem'
 
+    def get_mask(self):
+        return self.mask
+
+    def update_mask(self, _=None):
+        # copy values from GUI into our SharedValue containers
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_X_CENTER")
+        self.mask_center_x.set(ctrl.GetValue())
+
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_Y_CENTER")
+        self.mask_center_y.set(ctrl.GetValue())
+
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_RADIUS")
+        self.mask_radius.set(ctrl.GetValue())
+
+        # update the actual mask image
+
+        cx = self.mask_center_x.get()
+        cy = self.mask_center_y.get()
+        r =  self.mask_radius.get()
+
+        w,h = self.image_size
+        x = np.arange( w )
+        y = np.arange( h )
+        X,Y = np.meshgrid(x,y)
+        
+        dist = np.sqrt((cx-X)**2 + (cy-Y)**2)
+        assert dist.shape == (h,w)
+        self.mask = dist >= r
+        
     def process_frame(self,cam_id,buf,buf_offset,timestamp,framenumber):
         """do work on each frame
 
@@ -193,6 +248,11 @@ class TrackemClass(object):
                 clearval = 0
             else:
                 clearval = 255
+
+            # outside mask, set values to clearval
+            mask = self.get_mask()
+            buf_view[ mask ] = clearval
+
             for pt_num in range( self.num_points.get() ):
                 if light_on_dark:
                     # find brightest point
@@ -205,15 +265,30 @@ class TrackemClass(object):
                     if min_val > (255-luminance_threshold):
                         break
 
-                # clear image around point
+                # calculate region around found point
                 clearxmin = max(0,x-analysis_radius)
                 clearxmax = min(buf.size.w-1,x+analysis_radius)
                 clearymin = max(0,y-analysis_radius)
                 clearymax = min(buf.size.h-1,y+analysis_radius)
+
+                # extract a view of this region
+                this_region = buf_view[clearymin:clearymax,clearxmin:clearxmax]
+                if light_on_dark:
+                    binary_region = this_region > (max_val / 1.1)
+                else:
+                    binary_region = this_region < (min_val * 1.1)
+                num_pixels_classified = np.sum(binary_region.ravel())
+                #print '%d, (%d, %d)'%(num_pixels_classified,x,y)
+
+                # clear that region
                 buf_view[clearymin:clearymax,clearxmin:clearxmax]=clearval
 
-                # save values
-                point_list.append( (offset_x+x,offset_y+y) )
+                if num_pixels_classified > self.max_area.get():
+                    # we don't want this point
+                    pass
+                else:
+                    # save values
+                    point_list.append( (offset_x+x,offset_y+y) )
 
             # send data over ROS
             if self.num_points.get():
@@ -231,6 +306,24 @@ class TrackemClass(object):
                     pose.theta = np.nan
                     msg.points.append( pose )
                 self.pub.publish(msg)
+
+        if self.view_mask_mode.isSet():
+
+            w,h = self.image_size
+            x=self.mask_center_x.get()
+            y=self.mask_center_y.get()
+            radius=self.mask_radius.get()
+
+            N = 64
+            theta = numpy.arange(N)*2*math.pi/N
+            xdraw = x+numpy.cos(theta)*radius
+            ydraw = y+numpy.sin(theta)*radius
+            for i in range(N-1):
+                draw_linesegs.append(
+                    (xdraw[i],ydraw[i],xdraw[i+1],ydraw[i+1]))
+            draw_linesegs.append(
+                (xdraw[-1],ydraw[-1],xdraw[0],ydraw[0]))
+
                     
         return point_list, draw_linesegs
 
@@ -256,3 +349,17 @@ class TrackemClass(object):
 
         self.image_size = (max_width,max_height)
         self.copybuf = FastImage.FastImage8u(FastImage.Size(max_width,max_height))
+
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_X_CENTER")
+        ctrl.SetRange(0,max_width-1)
+        ctrl.SetValue(self.mask_center_x.get())
+
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_Y_CENTER")
+        ctrl.SetRange(0,max_height-1)
+        ctrl.SetValue(self.mask_center_y.get())
+
+        ctrl = xrc.XRCCTRL(self.frame,"MASK_RADIUS")
+        ctrl.SetRange(0,max(max_width,max_height))
+        ctrl.SetValue(self.mask_radius.get())
+
+        self.update_mask()

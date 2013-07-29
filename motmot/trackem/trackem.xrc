@@ -18,7 +18,6 @@
           <object class="sizeritem">
             <object class="wxCheckBox" name="LIGHT_ON_DARK">
               <label>Find brightest points</label>
-              <checked>1</checked>
               <tooltip>If checked, search for brightest points. If unchecked, search for darkest points.</tooltip>
             </object>
             <flag>wxALIGN_CENTRE</flag>
@@ -70,6 +69,14 @@
               <object class="sizeritem">
                 <object class="wxTextCtrl" name="LUMINANCE_THRESHOLD"/>
               </object>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>Max area:</label>
+                </object>
+              </object>
+              <object class="sizeritem">
+                <object class="wxTextCtrl" name="MAX_AREA"/>
+              </object>
             </object>
             <flag>wxEXPAND|wxALIGN_CENTRE</flag>
           </object>
@@ -78,7 +85,79 @@
         <flag>wxALL|wxEXPAND</flag>
         <border>5</border>
       </object>
-      
+      <object class="sizeritem">
+        <object class="wxBoxSizer">
+          <object class="sizeritem">
+            <object class="wxCheckBox" name="VIEW_MASK_CHECKBOX">
+              <label>view mask mode</label>
+            </object>
+          </object>
+          <object class="sizeritem">
+            <object class="wxFlexGridSizer">
+              <cols>2</cols>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>center X</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxSlider" name="MASK_X_CENTER">
+                  <value/>
+                  <min/>
+                  <max>1</max>
+                  <style>wxSL_AUTOTICKS|wxSL_LABELS</style>
+                  <tooltip>center (x)</tooltip>
+                </object>
+                <option>1</option>
+                <flag>wxEXPAND</flag>
+              </object>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>center Y</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxSlider" name="MASK_Y_CENTER">
+                  <value/>
+                  <min/>
+                  <max>1</max>
+                  <style>wxSL_AUTOTICKS|wxSL_LABELS</style>
+                  <tooltip>center (y)</tooltip>
+                </object>
+                <flag>wxEXPAND</flag>
+              </object>
+              <object class="sizeritem">
+                <object class="wxStaticText">
+                  <label>radius</label>
+                </object>
+                <flag>wxALL|wxALIGN_RIGHT|wxALIGN_CENTRE_VERTICAL</flag>
+                <border>5</border>
+              </object>
+              <object class="sizeritem">
+                <object class="wxSlider" name="MASK_RADIUS">
+                  <value/>
+                  <min/>
+                  <max>1</max>
+                  <style>wxSL_AUTOTICKS|wxSL_LABELS</style>
+                  <tooltip>radius</tooltip>
+                </object>
+                <flag>wxEXPAND</flag>
+              </object>
+              <growablecols>1</growablecols>
+            </object>
+            <option>1</option>
+            <flag>wxEXPAND</flag>
+          </object>
+          <orient>wxVERTICAL</orient>
+        </object>
+        <option>1</option>
+        <flag>wxALL|wxEXPAND</flag>
+        <border>5</border>
+      </object>
       <object class="sizeritem">
         <object class="wxPanel" name="STATUS_BAR">
           <style>wxSUNKEN_BORDER</style>
@@ -95,5 +174,9 @@
         <flag>wxEXPAND</flag>
       </object>
     </object>
+  </object>
+  <object class="wxDialog" name="EDIT_MASK_DIALOG">
+    <title>Edit mask</title>
+    <style>wxDEFAULT_DIALOG_STYLE|wxTHICK_FRAME</style>
   </object>
 </resource>
