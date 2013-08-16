@@ -1,0 +1,32 @@
+<!--
+Demonstrate script that creates a point cloud, which can be seen in
+RViz (http://www.ros.org/wiki/rviz).  PointCloud2 messages appear on
+the topic "/trackem_pointcloud", and coordinates are defined to be in
+the /odom frame.
+
+The calibration file used in the invocations below should be changed
+as appropriate for your installation.  The convention is to place
+these files under calibrations/ in the trackem_ros package directory.
+
+
+SCL; 16 Aug 2013
+-->
+<launch>
+  <node pkg="trackem_ros" name="trackem" type="forward.py" />
+  <node pkg="trackem_ros" name="$(anon trackem)" type="calecho.py" args="$(find trackem_ros)/calibrations/camcalibration-20121206-142756.npz" />
+
+  <!-- Alternatively, create a forwardcal.py node, e.g., if the raw
+       image coordinates from trackem are not to be recorded. -->
+<!--  <node pkg="trackem_ros" name="trackem" type="forwardcal.py" args="$(find trackem_ros)/calibrations/camcalibration-20121206-142756.npz" />  -->
+
+  <node pkg="trackem_ros" name="$(anon trackem)" type="cloudecho.py" args="/odom">
+
+    <!-- Remove this remapping if you launch a forwardcal.py node (see above). -->
+    <remap from="/trackem/calpoints" to="/trackem_calpoints" />
+
+  </node>
+
+  <!-- In case nothing is providing an appropriate transform,
+       we may simply broadcast an identity transform. -->
+  <node pkg="tf" name="tf_id_odom_map" type="static_transform_publisher" args="0.0 0.0 0.0 0.0 0.0 0.0 1.0 /map /odom 100" />
+</launch>
