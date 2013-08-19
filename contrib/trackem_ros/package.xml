@@ -2,7 +2,7 @@
 <package>
   <name>trackem_ros</name>
   <version>0.0.0</version>
-  <description brief="trackem_ros">
+  <description>
 
     Forward one or more (up to a large number) of tracked points from
     trackem FView (Motmot) plugin to a ROS topic.  ROS nodes should be
