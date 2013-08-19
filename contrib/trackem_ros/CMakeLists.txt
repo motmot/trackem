@@ -17,4 +17,14 @@ add_message_files(
 generate_messages()
 
 catkin_package()
-install()
+install(PROGRAMS
+  nodes/forward.py
+  nodes/forwardcal.py
+  nodes/calecho.py
+  nodes/cloudecho.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+install(FILES
+  launch/pcloud.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
