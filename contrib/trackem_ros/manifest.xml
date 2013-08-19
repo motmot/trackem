@@ -1,52 +1,9 @@
 <package>
   <description brief="trackem_ros">
 
-    Forward one or more (up to a large number) of tracked points from
-    trackem FView (Motmot) plugin to a ROS topic.  ROS nodes should be
-    run on the computer that is receiving points from trackem.
-
-    The node forward.py provides coordinates as given by trackem in
-    units of pixels of the camera image.
-
-    Using calibration data passed to it at invocation, the node
-    forwardcal.py provides coordinates corresponding to points on the
-    physical plane in units of meters.  The "physical plane" assumes
-    the points of interest are coplanar in the scene and therefore
-    can be tracked using a single camera.  The usage is
-    <code>forwardcal.py CALIB.npz</code>,
-    where CALIB.npz is a file of the format provided by the NumPy
-    functions load() and savez().  It should define the following parameters.
-    <ul>
-      <li><code>fc</code> -- focal length</li>
-      <li><code>cc</code> -- principal point</li>
-      <li><code>kc</code> -- radial and tangential distortion</li>
-      <li><code>H</code> -- projective transformation.</li>
-    </ul>
-    Roughly the operation of forwardcal.py is to undo radial and
-    tangential distortion and then, assuming the points of interest
-    evolve on a plane, apply a projective transformation to recover
-    physical coordinates.  For details, consult
-    <ul>
-      <li>
-      J. Heikkil\"{a} and O. Silv\'{e}n (1997).  A Four-step
-      Camera Calibration Procedure with Implicit Image Correction.
-      Proceedings of Computer Vision and Pattern Recognition ({CVPR}).
-      </li>
-      <li>
-      <a href="http://vision.caltech.edu/bouguetj/calib_doc/htmls/parameters.html">the
-      parameters description page</a> of J.-Y. Bouguet's <a
-      href="http://vision.caltech.edu/bouguetj/calib_doc/">"Camera
-      Calibration Toolbox for Matlab" website</a>.
-      </li>
-      <li>
-      See the book "Multiple View Geometry in computer vision" by
-      R. Hartley and A. Zisserman.  In particular, the required
-      projective transformation H can be computed using the Direct
-      Linear Transformation (DLT) algorithm for 2-dimensional
-      homography, e.g., following the treatment in Section 4.1 of the
-      second edition (2003), pages 88--93.
-      </li>
-    </ul>
+    The description is in package.xml.  This file and those with name
+    ending in "-rosbuild" are maintained for compatibility with
+    rosbuild.
 
   </description>
   <author>Scott C. Livingston</author>
