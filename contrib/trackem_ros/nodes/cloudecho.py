@@ -53,10 +53,15 @@ if __name__ == "__main__":
         print "Usage: cloudecho.py [FRAME]"
         exit(1)
 
+    frame_id = "/odom"
     if len(sys.argv) >= 2:
-        frame_id = sys.argv[1]
-    else:
-        frame_id = "/odom"
+        i = 1
+        while i < len(sys.argv):
+            if ":=" not in sys.argv[i]:
+                break
+            i += 1
+        if i < len(sys.argv):
+            frame_id = sys.argv[i]
 
     rospy.init_node("trackem", anonymous=True)
     cloudf = CloudForward(frame_id)
