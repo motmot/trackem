@@ -114,7 +114,7 @@ class BufferAllocator(object):
 
 
 class TrackemClass(object):
-    def __init__(self,wx_parent):
+    def __init__(self,wx_parent,fview_options):
         self.wx_parent = wx_parent
         self.frame = RES.LoadFrame(self.wx_parent,"TRACKEM_FRAME") # make frame main panel
 
@@ -145,9 +145,6 @@ class TrackemClass(object):
                             anonymous=True, # allow multiple instances to run
                             disable_signals=True, # let WX intercept them
                             )
-            self.pub = rospy.Publisher( '/flymad/raw_2d_positions',
-                                        Raw2dPositions,
-                                        tcp_nodelay=True )
 
     def _setupGUI(self):
 
@@ -412,3 +409,16 @@ class TrackemClass(object):
         ctrl.SetValue(self.mask_radius.get())
 
         self.update_mask()
+
+        if have_ROS:
+            ros_name = ros_ensure_valid_name(cam_id)
+            self.pub = rospy.Publisher( '/flymad/raw_2d_positions',
+                                        Raw2dPositions,
+                                        tcp_nodelay=True )
+            self.image_pub = rospy.Publisher( '%s/image_raw'%ros_name,
+                                        sensor_msgs.msg.Image )
+            self.last_image_publish = 0.0
+
+            self.mean_luminance_pub = rospy.Publisher( '%s/mean_luminance'%ros_name,
+                                        std_msgs.msg.Float32 )
+            self.last_mean_luminance_pub = 0.0
