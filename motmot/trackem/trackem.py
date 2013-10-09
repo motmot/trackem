@@ -9,7 +9,6 @@ import motmot.realtime_image_analysis.realtime_image_analysis as realtime_image_
 import numpy
 import motmot.wxvalidatedtext.wxvalidatedtext as wxvt
 import os, sys, socket, signal, time, math, threading, Queue
-import motmot.flytrax.flytrax as flytrax
 import motmot.imops.imops as imops
 import numpy as np
 
@@ -20,6 +19,8 @@ roslib.load_manifest('flymad')
 
 from flymad.msg import Raw2dPositions
 from geometry_msgs.msg import Pose2D
+import sensor_msgs.msg
+import std_msgs.msg
 import rospy
 import rospy.core
 # -----------------------------------------
@@ -27,6 +28,9 @@ import rospy.core
 RESFILE = pkg_resources.resource_filename(__name__,"trackem.xrc") # trigger extraction
 RES = xrc.EmptyXmlResource()
 RES.LoadFromString(open(RESFILE).read())
+
+def ros_ensure_valid_name(name):
+    return name.replace('-','_')
 
 class SharedValue1(object):
     def __init__(self,initial_value):
@@ -223,9 +227,32 @@ class TrackemClass(object):
         class.
 
         """
-        if self.pixel_format=='YUV422':
-            buf = imops.yuv422_to_mono8( numpy.asarray(buf) ) # convert
+        assert self.pixel_format=='MONO8'
         
+        now = time.time()
+        if (now-self.last_image_publish) > 30.0: # every 30 seconds, publish image
+            msg = sensor_msgs.msg.Image()
+            msg.header.seq=framenumber
+            msg.header.stamp=rospy.Time.from_sec(now) # XXX TODO: once camera trigger is ROS node, get accurate timestamp                                      
+            msg.header.frame_id = "0"
+
+            npbuf = np.array(buf)
+            (height,width) = npbuf.shape
+
+            msg.height = height
+            msg.width = width
+            msg.encoding = 'mono8'
+            msg.step = width
+            msg.data = npbuf.tostring() # let numpy convert to string           
+
+            self.image_pub.publish(msg)
+            self.last_image_publish = now
+
+        if (now-self.last_mean_luminance_pub) > 0.5: # every 0.5 seconds, publish mean luminance
+            mean_lum = np.mean(buf)
+            self.mean_luminance_pub.publish(mean_lum)
+            self.last_mean_luminance_pub = now
+
         buf = FastImage.asfastimage(buf)
 
         ros_list = []
