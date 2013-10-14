@@ -1,55 +1,34 @@
 from __future__ import division
 
-import pkg_resources
+import time
+import threading
+import Queue
 
+import pkg_resources
+import numpy as np
 import wx
 from wx import xrc
+
 import motmot.FastImage.FastImage as FastImage
 import motmot.realtime_image_analysis.realtime_image_analysis as realtime_image_analysis
-import numpy
 import motmot.wxvalidatedtext.wxvalidatedtext as wxvt
-import os, sys, socket, signal, time, math, threading, Queue
-import motmot.imops.imops as imops
-import numpy as np
+from motmot.fview.utils import ros_ensure_valid_name, SharedValue1, lineseg_circle
 
 # ROS stuff ------------------------------
 import roslib
 have_ROS = True
 roslib.load_manifest('flymad')
 
-from flymad.msg import Raw2dPositions
-from geometry_msgs.msg import Pose2D
+import flymad.msg
+import geometry_msgs.msg
 import sensor_msgs.msg
 import std_msgs.msg
 import rospy
-import rospy.core
 # -----------------------------------------
 
 RESFILE = pkg_resources.resource_filename(__name__,"trackem.xrc") # trigger extraction
 RES = xrc.EmptyXmlResource()
 RES.LoadFromString(open(RESFILE).read())
-
-def ros_ensure_valid_name(name):
-    return name.replace('-','_')
-
-class SharedValue1(object):
-    def __init__(self,initial_value):
-        self._val = initial_value
-        self.lock = threading.Lock()
-    def get(self):
-        self.lock.acquire()
-        try:
-            val = self._val
-        finally:
-            self.lock.release()
-        return val
-    def set(self,new_value):
-        self.lock.acquire()
-        try:
-            self._val = new_value
-        finally:
-            self.lock.release()
-
 
 def bind_checkbox_to_threading_event( ctrl, threading_event ):
     class Handler(object):
@@ -265,7 +244,7 @@ class TrackemClass(object):
                 copyview = self.copybuf.roi( offset_x, offset_y, buf.size )
                 buf.get_8u_copy_put(copyview,buf.size)
                 buf = copyview
-            buf_view = numpy.asarray(buf) # get numpy view of data
+            buf_view = np.asarray(buf) # get numpy view of data
 
             # step 1. extract points
             analysis_radius = self.analysis_radius.get()
@@ -337,7 +316,7 @@ class TrackemClass(object):
 
             # send data over ROS
             if self.num_points.get():
-                msg = Raw2dPositions()
+                msg = flymad.msg.Raw2dPositions()
 
                 msg.header.stamp.secs = int(np.floor(timestamp))
                 msg.header.stamp.nsecs = int((timestamp%1.0)*1e9)
@@ -346,7 +325,7 @@ class TrackemClass(object):
                 msg.framenumber = framenumber
 
                 for (x,y,theta) in ros_list:
-                    pose = Pose2D()
+                    pose = geometry_msgs.msg.Pose2D()
                     pose.x = x
                     pose.y = y
                     pose.theta = theta
@@ -360,16 +339,7 @@ class TrackemClass(object):
             y=self.mask_center_y.get()
             radius=self.mask_radius.get()
 
-            N = 64
-            theta = numpy.arange(N)*2*math.pi/N
-            xdraw = x+numpy.cos(theta)*radius
-            ydraw = y+numpy.sin(theta)*radius
-            for i in range(N-1):
-                draw_linesegs.append(
-                    (xdraw[i],ydraw[i],xdraw[i+1],ydraw[i+1]))
-            draw_linesegs.append(
-                (xdraw[-1],ydraw[-1],xdraw[0],ydraw[0]))
-
+            draw_linesegs.extend( lineseg_circle(x,y,radius) )
                     
         return point_list, draw_linesegs
 
@@ -413,7 +383,7 @@ class TrackemClass(object):
         if have_ROS:
             ros_name = ros_ensure_valid_name(cam_id)
             self.pub = rospy.Publisher( '/flymad/raw_2d_positions',
-                                        Raw2dPositions,
+                                        flymad.msg.Raw2dPositions,
                                         tcp_nodelay=True )
             self.image_pub = rospy.Publisher( '%s/image_raw'%ros_name,
                                         sensor_msgs.msg.Image )
