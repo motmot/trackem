@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(name='motmot.trackem',
       description='multiple realtime point tracker (part of motmot)',
-      version='0.4.1',
+      version='0.5',
       entry_points = {
     'motmot.fview.plugins':'trackem = motmot.trackem.trackem:TrackemClass',
     },
