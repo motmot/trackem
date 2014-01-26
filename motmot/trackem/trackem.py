@@ -86,7 +86,7 @@ def bind_textbox_to_sharedvalue( ctrl, shared_value, validator_func=None, conver
         raise NotImplementedError('not implemented')
         # XXX this codepath hasn't been tested
         #ctrl.Bind( wx.EVT_TEXTBOX, handler.OnSet )
-                              
+
 class BufferAllocator(object):
     def __call__(self, w, h):
         return FastImage.FastImage8u(FastImage.Size(w,h))
@@ -188,11 +188,11 @@ class TrackemClass(object):
         x = np.arange( w )
         y = np.arange( h )
         X,Y = np.meshgrid(x,y)
-        
+
         dist = np.sqrt((cx-X)**2 + (cy-Y)**2)
         assert dist.shape == (h,w)
         self.mask = dist >= r
-        
+
     def process_frame(self,cam_id,buf,buf_offset,timestamp,framenumber):
         """do work on each frame
 
@@ -204,12 +204,12 @@ class TrackemClass(object):
 
         """
         assert self.pixel_format=='MONO8'
-        
+
         now = time.time()
         if (now-self.last_image_publish) > 30.0: # every 30 seconds, publish image
             msg = sensor_msgs.msg.Image()
             msg.header.seq=framenumber
-            msg.header.stamp=rospy.Time.from_sec(now) # XXX TODO: once camera trigger is ROS node, get accurate timestamp                                      
+            msg.header.stamp=rospy.Time.from_sec(now) # XXX TODO: once camera trigger is ROS node, get accurate timestamp
             msg.header.frame_id = "0"
 
             npbuf = np.array(buf)
@@ -219,7 +219,7 @@ class TrackemClass(object):
             msg.width = width
             msg.encoding = 'mono8'
             msg.step = width
-            msg.data = npbuf.tostring() # let numpy convert to string           
+            msg.data = npbuf.tostring() # let numpy convert to string
 
             self.image_pub.publish(msg)
             self.last_image_publish = now
@@ -340,7 +340,7 @@ class TrackemClass(object):
             radius=self.mask_radius.get()
 
             draw_linesegs.extend( lineseg_circle(x,y,radius) )
-                    
+
         return point_list, draw_linesegs
 
     def set_view_flip_LR( self, val ):
