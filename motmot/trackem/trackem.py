@@ -14,18 +14,6 @@ import motmot.realtime_image_analysis.realtime_image_analysis as realtime_image_
 import motmot.wxvalidatedtext.wxvalidatedtext as wxvt
 from motmot.fview.utils import ros_ensure_valid_name, SharedValue1, lineseg_circle
 
-# ROS stuff ------------------------------
-import roslib
-have_ROS = True
-roslib.load_manifest('flymad')
-
-import flymad.msg
-import geometry_msgs.msg
-import sensor_msgs.msg
-import std_msgs.msg
-import rospy
-# -----------------------------------------
-
 RESFILE = pkg_resources.resource_filename(__name__,"trackem.xrc") # trigger extraction
 RES = xrc.EmptyXmlResource()
 RES.LoadFromString(open(RESFILE).read())
@@ -94,7 +82,45 @@ class BufferAllocator(object):
 
 class TrackemClass(object):
     def __init__(self,wx_parent,fview_options):
+
         self.wx_parent = wx_parent
+
+        self.have_ros = False
+        if fview_options.get('have_ros'):
+            try:
+                import roslib.packages
+                roslib.load_manifest('flymad')
+                import rospy
+                import geometry_msgs.msg
+                import sensor_msgs.msg
+                import std_msgs.msg
+                import flymad.msg
+
+                self._rospy_time_from_sec = rospy.Time.from_sec
+                self._rospy = rospy
+
+                self.pub_position = rospy.Publisher(
+                                            '/flymad/raw_2d_positions',
+                                            flymad.msg.Raw2dPositions,
+                                            tcp_nodelay=True )
+                self.pub_position_class = flymad.msg.Raw2dPositions
+                self.pub_pose_class = geometry_msgs.msg.Pose2D
+                #create pub_image when we know the camera name
+                self.pub_image_class = sensor_msgs.msg.Image
+                self.pub_last_image = 0.0
+                #create pub_mean_luminance later
+                self.pub_mean_luminance_class = std_msgs.msg.Float32
+                self.pub_last_mean_luminance = 0.0
+
+                self.have_ros = True
+            except roslib.packages.InvalidROSPkgException:
+                pass
+
+        if not self.have_ros:
+            self.pub_position = None
+            self.pub_image = None
+            self.pub_mean_luminance = None
+
         self.frame = RES.LoadFrame(self.wx_parent,"TRACKEM_FRAME") # make frame main panel
 
         self.num_points = SharedValue1(10)
@@ -117,13 +143,6 @@ class TrackemClass(object):
         self.view_mask_mode = threading.Event()
 
         self._setupGUI()
-
-        #####
-        if have_ROS:
-            rospy.init_node('fview', # common name across all plugins so multiple calls to init_node() don't fail
-                            anonymous=True, # allow multiple instances to run
-                            disable_signals=True, # let WX intercept them
-                            )
 
     def _setupGUI(self):
 
@@ -206,28 +225,31 @@ class TrackemClass(object):
         assert self.pixel_format=='MONO8'
 
         now = time.time()
-        if (now-self.last_image_publish) > 30.0: # every 30 seconds, publish image
-            msg = sensor_msgs.msg.Image()
-            msg.header.seq=framenumber
-            msg.header.stamp=rospy.Time.from_sec(now) # XXX TODO: once camera trigger is ROS node, get accurate timestamp
-            msg.header.frame_id = "0"
+        if self.pub_image is not None:
+            if (now - self.pub_last_image) > 30.0:
+                msg = self.pub_image_class()
+                msg.header.seq = framenumber
+                # XXX TODO: once camera trigger is ROS node, get accurate timestamp
+                msg.header.stamp = self._rospy_time_from_sec(now) 
+                msg.header.frame_id = "0"
 
-            npbuf = np.array(buf)
-            (height,width) = npbuf.shape
+                npbuf = np.array(buf)
+                (height,width) = npbuf.shape
 
-            msg.height = height
-            msg.width = width
-            msg.encoding = 'mono8'
-            msg.step = width
-            msg.data = npbuf.tostring() # let numpy convert to string
+                msg.height = height
+                msg.width = width
+                msg.encoding = 'mono8'
+                msg.step = width
+                msg.data = npbuf.tostring() # let numpy convert to string
 
-            self.image_pub.publish(msg)
-            self.last_image_publish = now
+                self.pub_image.publish(msg)
+                self.pub_last_image = now
 
-        if (now-self.last_mean_luminance_pub) > 0.5: # every 0.5 seconds, publish mean luminance
-            mean_lum = np.mean(buf)
-            self.mean_luminance_pub.publish(mean_lum)
-            self.last_mean_luminance_pub = now
+        if self.pub_mean_luminance is not None:
+            if (now-self.pub_last_mean_luminance) > 0.5:
+                mean_lum = np.mean(buf)
+                self.pub_mean_luminance.publish(float(mean_lum))
+                self.pub_last_mean_luminance = now
 
         buf = FastImage.asfastimage(buf)
 
@@ -316,21 +338,22 @@ class TrackemClass(object):
 
             # send data over ROS
             if self.num_points.get():
-                msg = flymad.msg.Raw2dPositions()
+                if self.pub_position is not None:
+                    msg = self.pub_position_class()
 
-                msg.header.stamp.secs = int(np.floor(timestamp))
-                msg.header.stamp.nsecs = int((timestamp%1.0)*1e9)
-                msg.header.frame_id = "pixels"
+                    msg.header.stamp.secs = int(np.floor(timestamp))
+                    msg.header.stamp.nsecs = int((timestamp%1.0)*1e9)
+                    msg.header.frame_id = "pixels"
 
-                msg.framenumber = framenumber
+                    msg.framenumber = framenumber
 
-                for (x,y,theta) in ros_list:
-                    pose = geometry_msgs.msg.Pose2D()
-                    pose.x = x
-                    pose.y = y
-                    pose.theta = theta
-                    msg.points.append( pose )
-                self.pub.publish(msg)
+                    for (x,y,theta) in ros_list:
+                        pose = self.pub_pose_class()
+                        pose.x = x
+                        pose.y = y
+                        pose.theta = theta
+                        msg.points.append( pose )
+                    self.pub_position.publish(msg)
 
         if self.view_mask_mode.isSet():
 
@@ -380,15 +403,12 @@ class TrackemClass(object):
 
         self.update_mask()
 
-        if have_ROS:
+        if self.have_ros:
             ros_name = ros_ensure_valid_name(cam_id)
-            self.pub = rospy.Publisher( '/flymad/raw_2d_positions',
-                                        flymad.msg.Raw2dPositions,
-                                        tcp_nodelay=True )
-            self.image_pub = rospy.Publisher( '%s/image_raw'%ros_name,
-                                        sensor_msgs.msg.Image )
-            self.last_image_publish = 0.0
+            self.pub_image = self._rospy.Publisher(
+                                        '%s/image_raw' % ros_name,
+                                        self.pub_image_class)
+            self.pub_mean_luminance = self._rospy.Publisher(
+                                        '%s/mean_luminance' % ros_name,
+                                        self.pub_mean_luminance_class)
 
-            self.mean_luminance_pub = rospy.Publisher( '%s/mean_luminance'%ros_name,
-                                        std_msgs.msg.Float32 )
-            self.last_mean_luminance_pub = 0.0
